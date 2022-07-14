@@ -7,6 +7,7 @@ import pandas as pd
 import pyodbc as pyodbc
 
 
+# @Description: Returns a pandas dataframe consisting of some old and some new records from a .csv file.
 def getFile():
     FilePath = r'C:\Users\emeyers\Desktop\default_test_2.csv'
     df = pd.read_csv(FilePath, header=0, encoding='unicode_escape')
@@ -18,13 +19,15 @@ def getFile():
         zero = string.index('0')
         slash = string.index('/')
         df['Unnamed: 19'][i] = int(string[zero:slash])
-        end.append(int(string[slash+1:]))
+        end.append(int(string[slash + 1:]))
     df['End'] = end
     df = df.sort_values(by=['Unnamed: 19', 'End'], ignore_index=True)
     return df
 
 
+# @Description: Inserts new records into designated microsoft access database
 def updateAccess():
+    # Setup
     filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"
     driver = pyodbc.dataSources()
     driver = driver['MS Access Database']
@@ -35,6 +38,8 @@ def updateAccess():
     df = getFile()
     lastUpdate = 0
     maxItem = 0
+
+    # Finds the last record in the dataframe that's also in Access
     for i in range(0, len(df.index)):
         if int((i / len(df.index)) * 100) != lastUpdate:
             lastUpdate = int((i / len(df.index)) * 100)
@@ -48,12 +53,14 @@ def updateAccess():
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
 
+    # Inserts the new records into Access
     for i in range(0, len(df2.index)):
         cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
                        "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
                        "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", df2.iloc[i]['User'], df2.iloc[i]['EDI'],
                        df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], df2.iloc[i]['Container #'],
-                       str(df2.iloc[i]['Master BOL/Booking Ref']), df2.iloc[i]['Customer'], str(df2.iloc[i]['Customer Ref']),
+                       str(df2.iloc[i]['Master BOL/Booking Ref']), df2.iloc[i]['Customer'],
+                       str(df2.iloc[i]['Customer Ref']),
                        df2.iloc[i]['Pick Up'], df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
 
     print('Commit in progress...')
@@ -63,7 +70,3 @@ def updateAccess():
 
 if __name__ == '__main__':
     updateAccess()
-
-
-
-
