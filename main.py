@@ -32,11 +32,6 @@ def updateAccess():
     cursor = connection.cursor()
     tableName = 'Pick Up 2022 Cont'
 
-    dfColumns = 'User', 'EDI', 'Order Date', 'Order #', 'Container #', \
-                'Master BOL/Booking Ref', 'Customer', 'Customer Ref', 'Pick Up', \
-                'Delivery', 'DL City', 'Revenue', 'Cost', 'Inv', 'Live', 'OWT', \
-                'Status', 'Site'
-
     df = getFile()
     lastUpdate = 0
     maxItem = 0
@@ -52,11 +47,6 @@ def updateAccess():
     df2 = df[df['Unnamed: 19'] > maxItem]
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
-
-    df2Columns = ['Notes', 'User', 'EDI', 'Order Date', 'Order #', 'Container #',
-                  'Master BOL/Booking Ref', 'Customer', 'Customer Ref', 'Pick Up',
-                  'Delivery', 'DL City', 'Revenue', 'Cost', 'Inv', 'Live', 'OWT',
-                  'Status', 'Site']
 
     for i in range(0, len(df2.index)):
         cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
