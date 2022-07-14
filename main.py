@@ -6,6 +6,7 @@
 import pandas as pd
 import pyodbc as pyodbc
 
+
 def getFile():
     FilePath = r'C:\Users\emeyers\Desktop\default_test_2.csv'
     df = pd.read_csv(FilePath, header=0, encoding='unicode_escape')
@@ -48,10 +49,29 @@ def updateAccess():
         if cursor.fetchone() is not None:
             maxItem = max(maxItem, int(df.iloc[i]['Unnamed: 19']))
 
-    # maxIndex = max(df.index[df['Unnamed: 19'] == maxItem])
     df2 = df[df['Unnamed: 19'] > maxItem]
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
+
+    df2Columns = ['Notes', 'User', 'EDI', 'Order Date', 'Order #', 'Container #',
+                  'Master BOL/Booking Ref', 'Customer', 'Customer Ref', 'Pick Up',
+                  'Delivery', 'DL City', 'Revenue', 'Cost', 'Inv', 'Live', 'OWT',
+                  'Status', 'Site']
+
+    for i in range(0, len(df2.index)):
+        insert = "INSERT INTO [{}] ([User], [EDI], [Order Date], [Order #], [Container #], [Master BOL/Booking Ref], " \
+                 "[Customer], [Customer Ref], [Pick Up], [Delivery], [DL City]) VALUES ('{}','{}','{}','{}', '{}','{}'," \
+                 "'{}','{}', '{}', '{}', '{}')"\
+                 .format(tableName, df2.iloc[i]['User'], df2.iloc[i]['EDI'], df2.iloc[i]['Order Date'],
+                         df2.iloc[i]['Order #'], df2.iloc[i]['Container #'], df2.iloc[i]['Master BOL/Booking Ref'],
+                         df2.iloc[i]['Customer'], df2.iloc[i]['Customer Ref'], df2.iloc[i]['Pick Up'],
+                         df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
+
+        cursor.execute(insert)
+
+    print('Commit in progress...')
+    connection.commit()
+    print('Finished')
 
 
 if __name__ == '__main__':
