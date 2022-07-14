@@ -59,15 +59,12 @@ def updateAccess():
                   'Status', 'Site']
 
     for i in range(0, len(df2.index)):
-        insert = "INSERT INTO [{}] ([User], [EDI], [Order Date], [Order #], [Container #], [Master BOL/Booking Ref], " \
-                 "[Customer], [Customer Ref], [Pick Up], [Delivery], [DL City]) VALUES ('{}','{}','{}','{}', '{}','{}'," \
-                 "'{}','{}', '{}', '{}', '{}')"\
-                 .format(tableName, df2.iloc[i]['User'], df2.iloc[i]['EDI'], df2.iloc[i]['Order Date'],
-                         df2.iloc[i]['Order #'], df2.iloc[i]['Container #'], df2.iloc[i]['Master BOL/Booking Ref'],
-                         df2.iloc[i]['Customer'], df2.iloc[i]['Customer Ref'], df2.iloc[i]['Pick Up'],
-                         df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
-
-        cursor.execute(insert)
+        cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
+                       "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
+                       "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", df2.iloc[i]['User'], df2.iloc[i]['EDI'],
+                       df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], df2.iloc[i]['Container #'],
+                       str(df2.iloc[i]['Master BOL/Booking Ref']), df2.iloc[i]['Customer'], str(df2.iloc[i]['Customer Ref']),
+                       df2.iloc[i]['Pick Up'], df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
 
     print('Commit in progress...')
     connection.commit()
