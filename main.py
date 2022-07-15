@@ -11,11 +11,12 @@ import win32com.client
 import zipfile
 from pathlib import Path
 
-
 mailTo = 'emeyers@whimsytrucking.com'
 inboxEmail = 'emeyers@whimsytrucking.com'
 
 
+# @Param reason (String): Reason that will be inserted into email regarding why the program failed.
+# @Description: Sends email to specified recipient about reason for program failure.
 def sendFailureEmail(reason: str):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
@@ -33,8 +34,10 @@ def sendFailureEmail(reason: str):
 
     sys.exit(1)
 
-
+# @Return DataFrame: Dataframe containing the information from Default_TEST CSV
+# @Description: Retrieves Default_TEST file from Outlook email
 def getFileFromEmail():
+    # Find desired email in inbox
     dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
@@ -50,14 +53,11 @@ def getFileFromEmail():
             break
 
     if item is None:
-        print('File Not Found')
-        sendFailureEmail('Default_TEST email not found in inbox')
+        raise Exception('Default_TEST email not found in inbox')
     else:
-        print(item.Subject)
+        # Extracts CSV from email, places it in a local directory, and converts info from CSV to dataframe
         dir_path = Path(dir_path)
-        # dir_path = dir_path / str('Default_TEST')
-        # dir_path.mkdir(parents=True, exist_ok=True)
-        csvPath = []
+        csvPath = ''
         for attachment in item.Attachments:
             attachment.SaveAsFile(dir_path / str(attachment))
 
@@ -68,13 +68,17 @@ def getFileFromEmail():
                 os.remove(dir_path / i)
 
         for i in os.listdir(dir_path):
-            csvPath.append(dir_path / i)
+            csvPath = dir_path / i
 
-        if '.csv' in csvPath[0]:
-            return csvPath[0]
+        if '.csv' in str(csvPath):
+            df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
+            df.replace({pd.NaT: None}, inplace=True)
+            df = df.fillna('')
+            # TODO: Delete mail item when done (MailItem.Delete)
+            return df
         else:
-            sendFailureEmail('Unknown attachment found')
-        # TODO: Delete mail item when done (MailItem.Delete)
+            # TODO: Delete mail item when done (MailItem.Delete)
+            raise Exception('Unknown attachment found')
 
 
 # @Description: Returns a pandas dataframe consisting of some old and some new records from a .csv file.
@@ -96,8 +100,9 @@ def getFileFromLocal():
 
 
 # @Description: Inserts new records into designated microsoft access database
-def updateAccess(filePath):
+def updateAccess():
     # Setup
+    filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"
     driver = pyodbc.dataSources()
     driver = driver['MS Access Database']
     connection = pyodbc.connect(driver=driver, dbq=filePath)
@@ -122,7 +127,7 @@ def updateAccess(filePath):
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
 
-    # Inserts the new records into Access
+    # Inserts the new records into Access using MySQL syntax (';' not required)
     for i in range(0, len(df2.index)):
         cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
                        "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
@@ -134,12 +139,12 @@ def updateAccess(filePath):
 
     print('Commit in progress...')
     connection.commit()
-    # TODO: Remove used CSV file
     print('Finished')
 
 
 if __name__ == '__main__':
     try:
-        updateAccess(getFileFromEmail())
+        updateAccess()
     except Exception as e:
+        print(e)
         sendFailureEmail(e)
