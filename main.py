@@ -5,7 +5,6 @@
 
 import os
 import sys
-
 import numpy as np
 import pandas as pd
 import pyodbc as pyodbc
@@ -16,6 +15,8 @@ from pathlib import Path
 mailTo = 'emeyers@whimsytrucking.com'
 inboxEmail = 'emeyers@whimsytrucking.com'
 
+class Data:
+    messages = []
 
 # @Param reason (String): Reason that will be inserted into email regarding why the program failed.
 # @Description: Sends email to specified recipient about reason for program failure.
@@ -37,23 +38,42 @@ def sendFailureEmail(reason: str):
     sys.exit(1)
 
 
-def sendSuccessEmail():
+def sendSuccessEmail(mess, df: pd.DataFrame):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
 
     mailItem = olApp.CreateItem(0)
-    mailItem.Subject = 'Automatic Task Success'
     mailItem.BodyFormat = 1
-    mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
-                    "Upload' has been completed successfully!"
-    # TODO: Send the data that was uploaded
+    if len(mess) > 0:
+        mailItem.Subject = 'Automatic Task Success (Warnings: '+str(len(mess))+')'
+        mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
+                        "Upload' has been completed successfully but with the following " \
+                        "message(s):\n\n{}\n\n".format(mess)
+    else:
+        mailItem.Subject = 'Automatic Task Success'
+        mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
+                        "Upload' has been completed successfully!\n\n"
+
     mailItem.To = mailTo
     mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(inboxEmail)))
+
+    dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
+    dir_path = Path(dir_path)
+    if not os.path.exists(dir_path / 'LinesAdded'):
+        os.makedirs(dir_path / 'LinesAdded')
+    dir_path = dir_path / 'LinesAdded'
+    w2Path = dir_path / 'LinesAdded.xlsx'
+
+    writer = pd.ExcelWriter(w2Path, engine='openpyxl')
+    df.to_excel(writer, sheet_name='Output', index=False)
+    writer.save()
+
+    mailItem.Attachments.Add(Source=str(w2Path))
 
     mailItem.Save()
     mailItem.Send()
 
-    sys.exit(1)
+    sys.exit(0)
 
 
 # @Return DataFrame: Dataframe containing the information from Default_TEST CSV
@@ -63,6 +83,11 @@ def getFileFromEmail():
     dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+    dir_path = Path(dir_path)
+    if not os.path.exists(dir_path / 'DownloadedEmailAttachments'):
+        os.makedirs(dir_path / 'DownloadedEmailAttachments')
+
+    dir_path = dir_path / 'DownloadedEmailAttachments'
 
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
@@ -70,7 +95,7 @@ def getFileFromEmail():
     inbox = olNS.GetDefaultFolder(6)
     item = None
     for messages in inbox.Items:
-        if 'Default_TEST AUTO' in messages.Subject:
+        if 'DEFAULT_TEST AUTO' in messages.Subject:
             item = messages
             break
 
@@ -78,7 +103,6 @@ def getFileFromEmail():
         raise Exception('Default_TEST email not found in inbox')
     else:
         # Extracts CSV from email, places it in a local directory, and converts info from CSV to dataframe
-        dir_path = Path(dir_path)
         csvPath = ''
         for attachment in item.Attachments:
             attachment.SaveAsFile(dir_path / str(attachment))
@@ -92,13 +116,16 @@ def getFileFromEmail():
         for i in os.listdir(dir_path):
             csvPath = dir_path / i
 
-        # TODO: Add HTML support
-
         if '.csv' in str(csvPath):
             try:
                 df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
-            except Exception as e:
-                raise Exception('Cannot read file\n{}'.format(e))
+            except pd.errors.ParserError:
+                Data.messages.append('WARNING: When reading input CSV, some lines were skipped that contained errors!')
+                try:
+                    df = pd.read_csv(csvPath, header=0, encoding='unicode_escape', error_bad_lines=False)
+                except Exception as e:
+                    raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
+
             df.replace({pd.NaT: None}, inplace=True)
             df = df.fillna('')
             end = []
@@ -147,8 +174,8 @@ def updateAccess():
     cursor = connection.cursor()
     tableName = 'Pick Up 2022 Cont'
 
-    # df = getFileFromEmail()  # TODO: Change get file from local to email
-    df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
+    df = getFileFromEmail()
+    # df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
     lastUpdate = 0  # TODO: Remove completion percentage for final build
     maxItem = 0
 
@@ -165,6 +192,8 @@ def updateAccess():
     df2 = df[df['Unnamed: 19'] > maxItem]
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
+    df2.drop('Cost', axis=1, inplace=True)
+    df2.drop('Inv', axis=1, inplace=True)
 
     # Inserts the new records into Access using MySQL syntax (';' not required)
     for i in range(0, len(df2.index)):
@@ -178,13 +207,12 @@ def updateAccess():
 
     print('Commit in progress...')
     connection.commit()
+    sendSuccessEmail(Data.messages, df2)
     print('Finished')
 
 
 if __name__ == '__main__':
     try:
         updateAccess()
-        # sendSuccessEmail()
     except Exception as e:
-        print('Failure', e)
-        # sendFailureEmail(e)
+        sendFailureEmail(e)
