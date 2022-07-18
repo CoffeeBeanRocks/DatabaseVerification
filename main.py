@@ -5,6 +5,8 @@
 
 import os
 import sys
+
+import numpy as np
 import pandas as pd
 import pyodbc as pyodbc
 import win32com.client
@@ -25,7 +27,7 @@ def sendFailureEmail(reason: str):
     mailItem.Subject = 'Automatic Task Failure'
     mailItem.BodyFormat = 1
     mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
-                    "Upload' has failed for the following reason:\n\"{}\"\n\n".format(reason)
+                    "Upload' has failed for the following reason(s):\n\"{}\"\n\n".format(reason)
     mailItem.To = mailTo
     mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(inboxEmail)))
 
@@ -33,6 +35,26 @@ def sendFailureEmail(reason: str):
     mailItem.Send()
 
     sys.exit(1)
+
+
+def sendSuccessEmail():
+    olApp = win32com.client.Dispatch("Outlook.Application")
+    olNS = olApp.GetNamespace("MAPI")
+
+    mailItem = olApp.CreateItem(0)
+    mailItem.Subject = 'Automatic Task Success'
+    mailItem.BodyFormat = 1
+    mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
+                    "Upload' has been completed successfully!"
+    # TODO: Send the data that was uploaded
+    mailItem.To = mailTo
+    mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(inboxEmail)))
+
+    mailItem.Save()
+    mailItem.Send()
+
+    sys.exit(1)
+
 
 # @Return DataFrame: Dataframe containing the information from Default_TEST CSV
 # @Description: Retrieves Default_TEST file from Outlook email
@@ -48,7 +70,7 @@ def getFileFromEmail():
     inbox = olNS.GetDefaultFolder(6)
     item = None
     for messages in inbox.Items:
-        if 'AUTO DEFAULT TEST' in messages.Subject:
+        if 'Default_TEST AUTO' in messages.Subject:
             item = messages
             break
 
@@ -70,24 +92,40 @@ def getFileFromEmail():
         for i in os.listdir(dir_path):
             csvPath = dir_path / i
 
+        # TODO: Add HTML support
+
         if '.csv' in str(csvPath):
-            df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
+            try:
+                df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
+            except Exception as e:
+                raise Exception('Cannot read file\n{}'.format(e))
             df.replace({pd.NaT: None}, inplace=True)
             df = df.fillna('')
+            end = []
+            df['Unnamed: 19'] = np.NAN
+            for i in range(0, len(df.index)):
+                string = df['Order #'][i]
+                zero = string.index('0')
+                slash = string.index('/')
+                df['Unnamed: 19'][i] = int(string[zero:slash])
+                end.append(int(string[slash + 1:]))
+            df['End'] = end
+            df = df.sort_values(by=['Unnamed: 19', 'End'], ignore_index=True)
             # TODO: Delete mail item when done (MailItem.Delete)
             return df
         else:
             # TODO: Delete mail item when done (MailItem.Delete)
-            raise Exception('Unknown attachment found')
+            raise Exception('Incompatible attachment {}'.format(csvPath))
 
 
+# @Param filePath: represents the filePath to the csv holding the pertinent data
 # @Description: Returns a pandas dataframe consisting of some old and some new records from a .csv file.
-def getFileFromLocal():
-    FilePath = r'C:\Users\emeyers\Desktop\default_test_2.csv'
-    df = pd.read_csv(FilePath, header=0, encoding='unicode_escape')
+def getFileFromLocal(filePath):
+    df = pd.read_csv(filePath, header=0, encoding='unicode_escape')
     df.replace({pd.NaT: None}, inplace=True)
     df = df.fillna('')
     end = []
+    df['Unnamed: 19'] = np.NAN
     for i in range(0, len(df.index)):
         string = df['Order #'][i]
         zero = string.index('0')
@@ -109,8 +147,9 @@ def updateAccess():
     cursor = connection.cursor()
     tableName = 'Pick Up 2022 Cont'
 
-    df = getFileFromEmail()
-    lastUpdate = 0
+    # df = getFileFromEmail()  # TODO: Change get file from local to email
+    df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
+    lastUpdate = 0  # TODO: Remove completion percentage for final build
     maxItem = 0
 
     # Finds the last record in the dataframe that's also in Access
@@ -145,6 +184,7 @@ def updateAccess():
 if __name__ == '__main__':
     try:
         updateAccess()
+        # sendSuccessEmail()
     except Exception as e:
-        print(e)
-        sendFailureEmail(e)
+        print('Failure', e)
+        # sendFailureEmail(e)
