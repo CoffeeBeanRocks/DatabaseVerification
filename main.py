@@ -120,7 +120,8 @@ def getFileFromEmail():
             try:
                 df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
             except pd.errors.ParserError:
-                Data.messages.append('WARNING: When reading input CSV, some lines were skipped that contained errors!')
+                Data.messages.append('WARNING: When reading data from Trinium, some lines were '
+                                     'skipped because they contained errors.')
                 try:
                     df = pd.read_csv(csvPath, header=0, encoding='unicode_escape', error_bad_lines=False)
                 except Exception as e:
