@@ -38,17 +38,17 @@ def sendFailureEmail(reason: str):
     sys.exit(1)
 
 
-def sendSuccessEmail(mess, df: pd.DataFrame):
+def sendSuccessEmail(message, df: pd.DataFrame):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
 
     mailItem = olApp.CreateItem(0)
     mailItem.BodyFormat = 1
-    if len(mess) > 0:
-        mailItem.Subject = 'Automatic Task Success (Warnings: '+str(len(mess))+')'
+    if len(message) > 0:
+        mailItem.Subject = 'Automatic Task Success (Warnings: '+str(len(message))+')'
         mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
                         "Upload' has been completed successfully but with the following " \
-                        "message(s):\n\n{}\n\n".format(mess)
+                        "message(s):\n\n{}\n\n".format(message)
     else:
         mailItem.Subject = 'Automatic Task Success'
         mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
@@ -212,7 +212,7 @@ def updateAccess():
     print('Finished')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # TODO: Configure script to be run with output email when run from batch file
     try:
         updateAccess()
     except Exception as e:
