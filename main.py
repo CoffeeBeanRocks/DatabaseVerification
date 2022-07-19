@@ -127,6 +127,14 @@ def getFileFromEmail():
                 except Exception as e:
                     raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
 
+            df.drop('Cost', axis=1, inplace=True)
+            df.drop('Inv', axis=1, inplace=True)
+            df.drop('Site', axis=1, inplace=True)
+            df.drop('Status', axis=1, inplace=True)
+            df.drop('OWT', axis=1, inplace=True)
+            df.drop('Live', axis=1, inplace=True)
+            df.drop('Revenue', axis=1, inplace=True)
+
             df.replace({pd.NaT: None}, inplace=True)
             df = df.fillna('')
             end = []
@@ -165,6 +173,15 @@ def getFileFromLocal(filePath):
     return df
 
 
+def normalizeStr(value: str) -> str:
+    temp = value
+    if '=' in temp:
+        temp = temp.replace('=', '')
+    if '"' in temp:
+        temp = temp.replace('"', '')
+    return temp
+
+
 # @Description: Inserts new records into designated microsoft access database
 def updateAccess():
     # Setup
@@ -181,7 +198,7 @@ def updateAccess():
     maxItem = 0
 
     # Finds the last record in the dataframe that's also in Access
-    for i in range(0, len(df.index)):
+    for i in range(0, len(df.index)):  # TODO: Look from the bottom up (verify not none)
         if int((i / len(df.index)) * 100) != lastUpdate:
             lastUpdate = int((i / len(df.index)) * 100)
             print("{}%".format(lastUpdate))
@@ -193,18 +210,19 @@ def updateAccess():
     df2 = df[df['Unnamed: 19'] > maxItem]
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
-    df2.drop('Cost', axis=1, inplace=True)
-    df2.drop('Inv', axis=1, inplace=True)
 
     # Inserts the new records into Access using MySQL syntax (';' not required)
     for i in range(0, len(df2.index)):
+        customerRef = normalizeStr(df2.iloc[i]['Customer Ref'])
+        masterBOL = normalizeStr(df2.iloc[i]['Master BOL/Booking Ref'])
+        containerNum = normalizeStr(df2.iloc[i]['Container #'])
+
         cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
                        "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
                        "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", df2.iloc[i]['User'], df2.iloc[i]['EDI'],
-                       df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], df2.iloc[i]['Container #'],
-                       str(df2.iloc[i]['Master BOL/Booking Ref']), df2.iloc[i]['Customer'],
-                       str(df2.iloc[i]['Customer Ref']),
-                       df2.iloc[i]['Pick Up'], df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
+                       df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], containerNum,
+                       masterBOL, df2.iloc[i]['Customer'], customerRef, df2.iloc[i]['Pick Up'],
+                       df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
 
     print('Commit in progress...')
     connection.commit()
@@ -216,4 +234,5 @@ if __name__ == '__main__':  # TODO: Configure script to be run with output email
     try:
         updateAccess()
     except Exception as e:
+        print(e)
         sendFailureEmail(e)
