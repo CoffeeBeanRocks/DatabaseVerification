@@ -41,6 +41,9 @@ def sendFailureEmail(reason: Exception, trace: str):
     sys.exit(1)
 
 
+# @Param message: Tuple that contains any messages that should be displayed in the success email
+# @Param df: Dataframe containing all the data that was entered into access
+# @Description: Sends email to specified recipient about reason for program success.
 def sendSuccessEmail(message, df: pd.DataFrame):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
@@ -92,6 +95,10 @@ def getFileFromEmail() -> pd.DataFrame:
 
     dir_path = dir_path / 'DownloadedEmailAttachments'
 
+    # Removing attachments from previous run
+    for i in os.listdir(dir_path):
+        os.remove(dir_path / i)
+
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
 
@@ -119,6 +126,7 @@ def getFileFromEmail() -> pd.DataFrame:
         for i in os.listdir(dir_path):
             csvPath = dir_path / i
 
+        # Find .csv in email and format new pandas dataframe
         if '.csv' in str(csvPath):
             try:
                 df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
@@ -151,6 +159,7 @@ def getFileFromEmail() -> pd.DataFrame:
             df['End'] = end
             df = df.sort_values(by=['Unnamed: 19', 'End'], ignore_index=True)
             # TODO: Delete mail item when done (MailItem.Delete)
+            # TODO: Delete .csv item when done (os.remove(csvPath))
             return df
         else:
             # TODO: Delete mail item when done (MailItem.Delete)
@@ -191,7 +200,7 @@ def normalizeStr(value: str) -> str:
 # @Description: Inserts new records into designated microsoft access database
 def updateAccess():
     # Setup
-    filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"
+    filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"  # TODO: Change to live version
     driver = pyodbc.dataSources()
     driver = driver['MS Access Database']
     connection = pyodbc.connect(driver=driver, dbq=filePath)
@@ -203,7 +212,7 @@ def updateAccess():
     maxItem = 0
 
     # Finds the last record in the dataframe that's also in Access
-    for i in range(0, len(df.index)):  # TODO: Look from the bottom up (verify not none)
+    for i in range(0, len(df.index)):  # TODO: Change to search from the bottom up
         if int((i / len(df.index)) * 100) != lastUpdate:
             lastUpdate = int((i / len(df.index)) * 100)
             print("{}%".format(lastUpdate))
