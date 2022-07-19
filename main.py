@@ -31,7 +31,7 @@ def sendFailureEmail(reason: Exception, trace: str):
     mailItem.Subject = 'Automatic Task Failure'
     mailItem.BodyFormat = 1
     mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
-                    "Upload' has failed for the following reason(s):\n\"{}\"\n\n{}\n\n".format(reason, trace)
+                    "Upload' has failed for the following reason:\n\"{}\"\n\n{}\n\n".format(reason, trace)
     mailItem.To = Data.mailTo
     mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(Data.inboxEmail)))
 
@@ -222,12 +222,12 @@ def updateAccess():
         masterBOL = normalizeStr(df2.iloc[i]['Master BOL/Booking Ref'])
         containerNum = normalizeStr(df2.iloc[i]['Container #'])
 
-        cursor.execute("INSERT INTO [?] ([User], [EDI], [Order Date], [Order #], [Container #], "
+        cursor.execute("INSERT INTO [{}] ([User], [EDI], [Order Date], [Order #], [Container #], "
                        "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
-                       "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", Data.tableName, df2.iloc[i]['User'], df2.iloc[i]['EDI'],
-                       df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], containerNum,
-                       masterBOL, df2.iloc[i]['Customer'], customerRef, df2.iloc[i]['Pick Up'],
-                       df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
+                       "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)".format(Data.tableName), df2.iloc[i]['User'],
+                       df2.iloc[i]['EDI'], df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], containerNum, masterBOL,
+                       df2.iloc[i]['Customer'], customerRef, df2.iloc[i]['Pick Up'], df2.iloc[i]['Delivery'],
+                       df2.iloc[i]['DL City'])
 
     print('Commit in progress...')
     connection.commit()
