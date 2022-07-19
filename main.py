@@ -11,16 +11,19 @@ import pyodbc as pyodbc
 import win32com.client
 import zipfile
 from pathlib import Path
+import traceback
 
-mailTo = 'emeyers@whimsytrucking.com'
-inboxEmail = 'emeyers@whimsytrucking.com'
 
 class Data:
     messages = []
+    mailTo = 'emeyers@whimsytrucking.com'
+    inboxEmail = 'emeyers@whimsytrucking.com'
+    tableName = 'Pick Up 2022 Cont'
+
 
 # @Param reason (String): Reason that will be inserted into email regarding why the program failed.
 # @Description: Sends email to specified recipient about reason for program failure.
-def sendFailureEmail(reason: str):
+def sendFailureEmail(reason: Exception, trace: str):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
 
@@ -28,9 +31,9 @@ def sendFailureEmail(reason: str):
     mailItem.Subject = 'Automatic Task Failure'
     mailItem.BodyFormat = 1
     mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
-                    "Upload' has failed for the following reason(s):\n\"{}\"\n\n".format(reason)
-    mailItem.To = mailTo
-    mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(inboxEmail)))
+                    "Upload' has failed for the following reason(s):\n\"{}\"\n\n{}\n\n".format(reason, trace)
+    mailItem.To = Data.mailTo
+    mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(Data.inboxEmail)))
 
     mailItem.Save()
     mailItem.Send()
@@ -54,8 +57,8 @@ def sendSuccessEmail(message, df: pd.DataFrame):
         mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
                         "Upload' has been completed successfully!\n\n"
 
-    mailItem.To = mailTo
-    mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(inboxEmail)))
+    mailItem.To = Data.mailTo
+    mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(Data.inboxEmail)))
 
     dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
     dir_path = Path(dir_path)
@@ -78,7 +81,7 @@ def sendSuccessEmail(message, df: pd.DataFrame):
 
 # @Return DataFrame: Dataframe containing the information from Default_TEST CSV
 # @Description: Retrieves Default_TEST file from Outlook email
-def getFileFromEmail():
+def getFileFromEmail() -> pd.DataFrame:
     # Find desired email in inbox
     dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
     if not os.path.exists(dir_path):
@@ -156,7 +159,7 @@ def getFileFromEmail():
 
 # @Param filePath: represents the filePath to the csv holding the pertinent data
 # @Description: Returns a pandas dataframe consisting of some old and some new records from a .csv file.
-def getFileFromLocal(filePath):
+def getFileFromLocal(filePath: Path) -> pd.DataFrame:
     df = pd.read_csv(filePath, header=0, encoding='unicode_escape')
     df.replace({pd.NaT: None}, inplace=True)
     df = df.fillna('')
@@ -173,6 +176,9 @@ def getFileFromLocal(filePath):
     return df
 
 
+# @Param value: The string that will be adjusted
+# @Return str: The newly formatted string
+# @Description: Takes an input string, removes all instances of '=' and '"' then returns the result
 def normalizeStr(value: str) -> str:
     temp = value
     if '=' in temp:
@@ -190,7 +196,6 @@ def updateAccess():
     driver = driver['MS Access Database']
     connection = pyodbc.connect(driver=driver, dbq=filePath)
     cursor = connection.cursor()
-    tableName = 'Pick Up 2022 Cont'
 
     df = getFileFromEmail()
     # df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
@@ -202,7 +207,7 @@ def updateAccess():
         if int((i / len(df.index)) * 100) != lastUpdate:
             lastUpdate = int((i / len(df.index)) * 100)
             print("{}%".format(lastUpdate))
-        find = "SELECT * FROM [{}] WHERE [{}] = '{}'".format(tableName, 'Order #', df.iloc[i]['Order #'])
+        find = "SELECT * FROM [{}] WHERE [{}] = '{}'".format(Data.tableName, 'Order #', df.iloc[i]['Order #'])
         cursor.execute(find)
         if cursor.fetchone() is not None:
             maxItem = max(maxItem, int(df.iloc[i]['Unnamed: 19']))
@@ -217,9 +222,9 @@ def updateAccess():
         masterBOL = normalizeStr(df2.iloc[i]['Master BOL/Booking Ref'])
         containerNum = normalizeStr(df2.iloc[i]['Container #'])
 
-        cursor.execute("INSERT INTO [Pick Up 2022 Cont] ([User], [EDI], [Order Date], [Order #], [Container #], "
+        cursor.execute("INSERT INTO [?] ([User], [EDI], [Order Date], [Order #], [Container #], "
                        "[Master BOL/Booking Ref], [Customer], [Customer Ref], [Pick Up], [Delivery], "
-                       "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", df2.iloc[i]['User'], df2.iloc[i]['EDI'],
+                       "[DL City]) VALUES (?,?,?,?,?,?,?,?,?,?,?)", Data.tableName, df2.iloc[i]['User'], df2.iloc[i]['EDI'],
                        df2.iloc[i]['Order Date'], df2.iloc[i]['Order #'], containerNum,
                        masterBOL, df2.iloc[i]['Customer'], customerRef, df2.iloc[i]['Pick Up'],
                        df2.iloc[i]['Delivery'], df2.iloc[i]['DL City'])
@@ -230,9 +235,11 @@ def updateAccess():
     print('Finished')
 
 
-if __name__ == '__main__':  # TODO: Configure script to be run with output email when run from batch file
+if __name__ == '__main__':
     try:
+        if len(sys.argv) > 1:
+            Data.tableName = sys.argv[1]
+            Data.mailTo = sys.argv[2]
         updateAccess()
     except Exception as e:
-        print(e)
-        sendFailureEmail(e)
+        sendFailureEmail(e, traceback.format_exc())
