@@ -224,18 +224,14 @@ def updateAccess():
 
     df = getFileFromEmail()
     # df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
-    lastUpdate = 0  # TODO: Remove completion percentage for final build
-    maxItem = 0
 
-    # Finds the last record in the dataframe that's also in Access
-    for i in range(0, len(df.index)):  # TODO: Change to search from the bottom up
-        if int((i / len(df.index)) * 100) != lastUpdate:
-            lastUpdate = int((i / len(df.index)) * 100)
-            print("{}%".format(lastUpdate))
+    maxItem = 0
+    for i in reversed(range(0, len(df.index))):
         find = "SELECT * FROM [{}] WHERE [{}] = '{}'".format(Data.tableName, 'Order #', df.iloc[i]['Order #'])
         cursor.execute(find)
         if cursor.fetchone() is not None:
             maxItem = max(maxItem, int(df.iloc[i]['Unnamed: 19']))
+            break
 
     df2 = df[df['Unnamed: 19'] > maxItem]
     df2.drop('Unnamed: 19', axis=1, inplace=True)
