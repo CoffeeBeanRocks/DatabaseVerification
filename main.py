@@ -78,10 +78,7 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
     writer.save()
 
     mailItem.Attachments.Add(Source=str(w2Path))
-    try:
-        mailItem.Attachments.Add(Source=str(Data.csvPath))
-    except:
-        pass
+    mailItem.Attachments.Add(Source=str(Data.csvPath))
 
     mailItem.Save()
     mailItem.Send()
