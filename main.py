@@ -149,9 +149,10 @@ def getFileFromEmail() -> pd.DataFrame:
                     except:
                         myOut = buf.getvalue()
                     Data.skippedLines = myOut
-                    Data.csvPath = csvPath
             except Exception as e:
                 raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
+
+            Data.csvPath = csvPath
 
             df.drop('Cost', axis=1, inplace=True)
             df.drop('Inv', axis=1, inplace=True)
