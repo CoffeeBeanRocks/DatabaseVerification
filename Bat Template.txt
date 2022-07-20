@@ -1,0 +1,13 @@
+-------
+Format:
+
+[Exe Path] [Access Path] [Table Name] [Mail To Address]
+-------
+
+
+--------
+Example:
+
+"C:\Users\emeyers\Desktop\Default_TEST.exe" "C:\Users\emeyers\Desktop\EthanAccess.accdb" "Pick Up 2022 Cont" emeyers@whimsytrucking.com
+--------
+
