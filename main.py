@@ -12,10 +12,12 @@ import win32com.client
 import zipfile
 from pathlib import Path
 import traceback
+import io
+from contextlib import redirect_stderr
 
 
 class Data:
-    messages = []
+    skippedLines = ''
     mailTo = 'emeyers@whimsytrucking.com'
     inboxEmail = 'emeyers@whimsytrucking.com'
     tableName = 'Pick Up 2022 Cont'
@@ -44,17 +46,17 @@ def sendFailureEmail(reason: Exception, trace: str):
 # @Param message: Tuple that contains any messages that should be displayed in the success email
 # @Param df: Dataframe containing all the data that was entered into access
 # @Description: Sends email to specified recipient about reason for program success.
-def sendSuccessEmail(message, df: pd.DataFrame):
+def sendSuccessEmail(lines: str, df: pd.DataFrame):
     olApp = win32com.client.Dispatch("Outlook.Application")
     olNS = olApp.GetNamespace("MAPI")
 
     mailItem = olApp.CreateItem(0)
     mailItem.BodyFormat = 1
-    if len(message) > 0:
-        mailItem.Subject = 'Automatic Task Success (Warnings: '+str(len(message))+')'
+    if len(lines) > 0:
+        mailItem.Subject = 'Automatic Task Success (Warning: Skipped Lines)'
         mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
                         "Upload' has been completed successfully but with the following " \
-                        "message(s):\n\n{}\n\n".format(message)
+                        "skipped lines:\n\n{}\n\n".format(lines)
     else:
         mailItem.Subject = 'Automatic Task Success'
         mailItem.Body = "This is an automated email informing you that the task 'Default_TEST " \
@@ -131,12 +133,18 @@ def getFileFromEmail() -> pd.DataFrame:
             try:
                 df = pd.read_csv(csvPath, header=0, encoding='unicode_escape')
             except pd.errors.ParserError:
-                Data.messages.append('WARNING: When reading data from Trinium, some lines were '
-                                     'skipped because they contained errors.')
-                try:
+                # Saves any skipped lines to str myOut
+                with io.StringIO() as buf, redirect_stderr(buf):
                     df = pd.read_csv(csvPath, header=0, encoding='unicode_escape', error_bad_lines=False)
-                except Exception as e:
-                    raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
+                    myOut = buf.getvalue()
+                myOut = myOut[myOut.index("b'") + 1:]
+                myOut = myOut.replace('\\n', '] [')
+                myOut = myOut.replace("'", '')
+                myOut = '[' + myOut + ']'
+                myOut = myOut[0:len(myOut) - 3]
+                Data.skippedLines = myOut
+            except Exception as e:
+                raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
 
             df.drop('Cost', axis=1, inplace=True)
             df.drop('Inv', axis=1, inplace=True)
@@ -240,7 +248,7 @@ def updateAccess():
 
     print('Commit in progress...')
     connection.commit()
-    sendSuccessEmail(Data.messages, df2)
+    sendSuccessEmail(Data.skippedLines, df2)
     print('Finished')
 
 
@@ -251,4 +259,5 @@ if __name__ == '__main__':
             Data.mailTo = sys.argv[2]
         updateAccess()
     except Exception as e:
-        sendFailureEmail(e, traceback.format_exc())
+        print(traceback.format_exc())
+        # sendFailureEmail(e, traceback.format_exc())
