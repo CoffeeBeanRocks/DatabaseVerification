@@ -267,4 +267,4 @@ if __name__ == '__main__':
         updateAccess()
     except Exception as e:
         print(traceback.format_exc())
-        # sendFailureEmail(e, traceback.format_exc())
+        sendFailureEmail(e, traceback.format_exc())
