@@ -137,12 +137,16 @@ def getFileFromEmail() -> pd.DataFrame:
                 with io.StringIO() as buf, redirect_stderr(buf):
                     df = pd.read_csv(csvPath, header=0, encoding='unicode_escape', error_bad_lines=False)
                     myOut = buf.getvalue()
-                myOut = myOut[myOut.index("b'") + 1:]
-                myOut = myOut.replace('\\n', '] [')
-                myOut = myOut.replace("'", '')
-                myOut = '[' + myOut + ']'
-                myOut = myOut[0:len(myOut) - 3]
-                Data.skippedLines = myOut
+                    try:
+                        if len(myOut) > 0:
+                            myOut = myOut[myOut.index("b'") + 1:]
+                            myOut = myOut.replace('\\n', '] [')
+                            myOut = myOut.replace("'", '')
+                            myOut = '[' + myOut + ']'
+                            myOut = myOut[0:len(myOut) - 3]  # TODO: Testing needed
+                    except:
+                        myOut = buf.getvalue()
+                    Data.skippedLines = myOut
             except Exception as e:
                 raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
 
