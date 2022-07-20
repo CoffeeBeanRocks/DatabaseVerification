@@ -225,6 +225,7 @@ def updateAccess():
     df = getFileFromEmail()
     # df = getFileFromLocal(r"C:\Users\emeyers\Desktop\2022071826852.csv")
 
+    # Finds the last record in the dataframe that's also in Access
     maxItem = 0
     for i in reversed(range(0, len(df.index))):
         find = "SELECT * FROM [{}] WHERE [{}] = '{}'".format(Data.tableName, 'Order #', df.iloc[i]['Order #'])
