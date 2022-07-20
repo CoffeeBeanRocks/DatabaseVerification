@@ -21,6 +21,7 @@ class Data:
     mailTo = 'emeyers@whimsytrucking.com'
     inboxEmail = 'emeyers@whimsytrucking.com'
     tableName = 'Pick Up 2022 Cont'
+    csvPath = ''
 
 
 # @Param reason (String): Reason that will be inserted into email regarding why the program failed.
@@ -77,6 +78,10 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
     writer.save()
 
     mailItem.Attachments.Add(Source=str(w2Path))
+    try:
+        mailItem.Attachments.Add(Source=str(Data.csvPath))
+    except:
+        pass
 
     mailItem.Save()
     mailItem.Send()
@@ -147,6 +152,7 @@ def getFileFromEmail() -> pd.DataFrame:
                     except:
                         myOut = buf.getvalue()
                     Data.skippedLines = myOut
+                    Data.csvPath = csvPath
             except Exception as e:
                 raise Exception('Encountered a fatal error while reading file\n{}'.format(e))
 
