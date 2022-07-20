@@ -214,9 +214,9 @@ def normalizeStr(value: str) -> str:
 
 
 # @Description: Inserts new records into designated microsoft access database
-def updateAccess():
+def updateAccess(filePath):
     # Setup
-    filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"  # TODO: Change to live version
+    # filePath = r"C:\Users\emeyers\Desktop\EthanAccess.accdb"
     driver = pyodbc.dataSources()
     driver = driver['MS Access Database']
     connection = pyodbc.connect(driver=driver, dbq=filePath)
@@ -238,7 +238,7 @@ def updateAccess():
     df2.drop('Unnamed: 19', axis=1, inplace=True)
     df2.drop('End', axis=1, inplace=True)
 
-    # Inserts the new records into Access using MySQL syntax (';' not required)
+    # Inserts the new records into Access using SQL syntax (';' not required)
     for i in range(0, len(df2.index)):
         customerRef = normalizeStr(df2.iloc[i]['Customer Ref'])
         masterBOL = normalizeStr(df2.iloc[i]['Master BOL/Booking Ref'])
@@ -259,10 +259,11 @@ def updateAccess():
 
 if __name__ == '__main__':
     try:
-        if len(sys.argv) > 1:
-            Data.tableName = sys.argv[1]
-            Data.mailTo = sys.argv[2]
-        updateAccess()
+        if len(sys.argv) < 2:
+            raise Exception('Not enough arguments!')
+        elif len(sys.argv) > 2:
+            Data.tableName = sys.argv[2]
+            Data.mailTo = sys.argv[3]
+        updateAccess(sys.argv[1])
     except Exception as e:
-        print(traceback.format_exc())
         sendFailureEmail(e, traceback.format_exc())
