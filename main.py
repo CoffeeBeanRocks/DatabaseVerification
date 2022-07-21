@@ -10,7 +10,6 @@ import pandas as pd
 import pyodbc as pyodbc
 import win32com.client
 import zipfile
-from pathlib import Path
 import traceback
 import io
 from contextlib import redirect_stderr
@@ -28,7 +27,7 @@ class Data:
     inboxEmail = 'emeyers@whimsytrucking.com'
     tableName = 'Pick Up 2022 Cont'
     csvPath = ''
-    dir_path = Path('%s\\DefaultTestAuto\\' % os.environ['APPDATA'])
+    dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
 
 
 # @Param reason (String): Reason that will be inserted into email regarding why the program failed.
@@ -55,7 +54,6 @@ def sendFailureEmail(reason: Exception, trace: str):
     sys.exit(1)
 
 
-# @Param message: Tuple that contains any messages that should be displayed in the success email
 # @Param df: Dataframe containing all the data that was entered into access
 # @Description: Sends email to specified recipient about reason for program success.
 def sendSuccessEmail(lines: str, df: pd.DataFrame):
@@ -79,15 +77,15 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
     mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(Data.inboxEmail)))
 
     # Creating Lines Added folder and attachment
-    if not os.path.exists(Data.dir_path / 'LinesAdded'):
-        os.makedirs(Data.dir_path / 'LinesAdded')
-    w2Path = Data.dir_path / 'LinesAdded' / 'LinesAdded.xlsx'
-    writer = pd.ExcelWriter(w2Path, engine='openpyxl')
+    if not os.path.exists(Data.dir_path + '\\LinesAdded'):
+        os.makedirs(Data.dir_path + '\\LinesAdded')
+    linesAddedPath = Data.dir_path + '\\LinesAdded' + '\\LinesAdded.xlsx'
+    writer = pd.ExcelWriter(linesAddedPath, engine='openpyxl')
     df.to_excel(writer, sheet_name='Output', index=False)
     writer.save()
 
     # Adding attachments to email
-    mailItem.Attachments.Add(Source=str(w2Path))
+    mailItem.Attachments.Add(Source=str(linesAddedPath))
     mailItem.Attachments.Add(Source=str(Data.csvPath))
 
     # Sending
@@ -99,18 +97,18 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
 
 
 # @Return DataFrame: Dataframe containing the information from Default_TEST CSV
-# @Description: Retrieves Default_TEST file from Outlook email
+# @Description: Retrieves Default_TEST file from Outlook email and returns it in a Pandas Dataframe
 def getFileFromEmail() -> pd.DataFrame:
     # Creating proper directory structure
     if not os.path.exists(Data.dir_path):
         os.makedirs(Data.dir_path)
-    if not os.path.exists(Data.dir_path / 'DownloadedEmailAttachments'):
-        os.makedirs(Data.dir_path / 'DownloadedEmailAttachments')
-    attachmentsFolder = Data.dir_path / 'DownloadedEmailAttachments'
+    if not os.path.exists(Data.dir_path + '\\DownloadedEmailAttachments'):
+        os.makedirs(Data.dir_path + '\\DownloadedEmailAttachments')
+    attachmentsFolder = Data.dir_path + '\\DownloadedEmailAttachments'
 
     # Removing attachments from previous run
     for i in os.listdir(attachmentsFolder):
-        os.remove(attachmentsFolder / i)
+        os.remove(attachmentsFolder + '\\' + i)
 
     # Connecting to outlook
     olApp = win32com.client.Dispatch("Outlook.Application")
@@ -130,19 +128,19 @@ def getFileFromEmail() -> pd.DataFrame:
     else:
         # Downloads all attachments contained in email
         for attachment in item.Attachments:
-            attachment.SaveAsFile(attachmentsFolder / str(attachment))
+            attachment.SaveAsFile(attachmentsFolder + '\\' + str(attachment))
 
         # If necessary file is in a .zip file, it extracts the file from the .zip and removes the .zip file
         for i in os.listdir(attachmentsFolder):
             if '.zip' in i:
-                with zipfile.ZipFile(attachmentsFolder / i, 'r') as zip_ref:
+                with zipfile.ZipFile(attachmentsFolder + '\\' + i, 'r') as zip_ref:
                     zip_ref.extractall(attachmentsFolder)
-                os.remove(attachmentsFolder / i)
+                os.remove(attachmentsFolder + '\\' + i)
 
         # Finds .csv in list of attachments from email
         for i in os.listdir(attachmentsFolder):
             if '.csv' in i:
-                Data.csvPath = attachmentsFolder / i
+                Data.csvPath = attachmentsFolder + '\\' + i
 
         # Validates .csv was found
         if '.csv' in str(Data.csvPath):
