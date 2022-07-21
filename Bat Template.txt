@@ -2,12 +2,19 @@
 Format:
 
 [Exe Path] [Access Path] [Table Name] [Mail To Address] [Your Inbox email]
+
+Exe Path = Path to the compiled .exe file
+Access Path = Path to the access database that will be updated (Must be actual location and not .lnk)
+Table Name = Name of the table that will be updated in access
+Mail To Address = Email address where all success and failure emails will be sent TO
+Your Inbox email = Email address that is currently logged into on outlook that you'd like success and failure
+                    emails to be sent FROM
 -------
 
 
 --------
 Example:
 
-"C:\Users\emeyers\Desktop\Default_TEST.exe" "C:\Users\emeyers\Desktop\EthanAccess.accdb" "Pick Up 2022 Cont" emeyers@whimsytrucking.com emeyers@whimsytrucking.com
+"C:\Users\emeyers\Desktop\Default_TEST.exe" "C:\Users\emeyers\Desktop\EthanAccess.mdb" "Pick Up 2022 Cont" emeyers@whimsytrucking.com emeyers@whimsytrucking.com
 --------
 
