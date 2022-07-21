@@ -20,6 +20,7 @@ from contextlib import redirect_stderr
 # @Var inboxEmail: The email address where success and failure emails will be generated and sent from
 # @Var tableName: The name of the table within the access file
 # @Var csvPath: Path to the downloaded Default_TEST csv locally
+# @Var dir_Path: Path to the folder containing the necessary files for this program
 # @Description: Class for necessary global variables
 class Data:
     skippedLines = ''
@@ -27,6 +28,7 @@ class Data:
     inboxEmail = 'emeyers@whimsytrucking.com'
     tableName = 'Pick Up 2022 Cont'
     csvPath = ''
+    dir_path = Path('%s\\DefaultTestAuto\\' % os.environ['APPDATA'])
 
 
 # @Param reason (String): Reason that will be inserted into email regarding why the program failed.
@@ -76,13 +78,10 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
     mailItem.To = Data.mailTo
     mailItem._oleobj_.Invoke(*(64209, 0, 8, 0, olNS.Accounts.Item(Data.inboxEmail)))
 
-    # Creating Lines Added attachment
-    dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
-    dir_path = Path(dir_path)
-    if not os.path.exists(dir_path / 'LinesAdded'):
-        os.makedirs(dir_path / 'LinesAdded')
-    dir_path = dir_path / 'LinesAdded'
-    w2Path = dir_path / 'LinesAdded.xlsx'
+    # Creating Lines Added folder and attachment
+    if not os.path.exists(Data.dir_path / 'LinesAdded'):
+        os.makedirs(Data.dir_path / 'LinesAdded')
+    w2Path = Data.dir_path / 'LinesAdded' / 'LinesAdded.xlsx'
     writer = pd.ExcelWriter(w2Path, engine='openpyxl')
     df.to_excel(writer, sheet_name='Output', index=False)
     writer.save()
@@ -103,17 +102,15 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
 # @Description: Retrieves Default_TEST file from Outlook email
 def getFileFromEmail() -> pd.DataFrame:
     # Creating proper directory structure TODO: Consolidate all the references to dir_path in Data class
-    dir_path = '%s\\DefaultTestAuto\\' % os.environ['APPDATA']
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    dir_path = Path(dir_path)
-    if not os.path.exists(dir_path / 'DownloadedEmailAttachments'):
-        os.makedirs(dir_path / 'DownloadedEmailAttachments')
-    dir_path = dir_path / 'DownloadedEmailAttachments'
+    if not os.path.exists(Data.dir_path):
+        os.makedirs(Data.dir_path)
+    if not os.path.exists(Data.dir_path / 'DownloadedEmailAttachments'):
+        os.makedirs(Data.dir_path / 'DownloadedEmailAttachments')
+    attachmentsFolder = Data.dir_path / 'DownloadedEmailAttachments'
 
     # Removing attachments from previous run
-    for i in os.listdir(dir_path):
-        os.remove(dir_path / i)
+    for i in os.listdir(attachmentsFolder):
+        os.remove(attachmentsFolder / i)
 
     # Connecting to outlook
     olApp = win32com.client.Dispatch("Outlook.Application")
@@ -133,19 +130,19 @@ def getFileFromEmail() -> pd.DataFrame:
     else:
         # Downloads all attachments contained in email
         for attachment in item.Attachments:
-            attachment.SaveAsFile(dir_path / str(attachment))
+            attachment.SaveAsFile(attachmentsFolder / str(attachment))
 
         # If necessary file is in a .zip file, it extracts the file from the .zip and removes the .zip file
-        for i in os.listdir(dir_path):
+        for i in os.listdir(attachmentsFolder):
             if '.zip' in i:
-                with zipfile.ZipFile(dir_path / i, 'r') as zip_ref:
-                    zip_ref.extractall(dir_path)
-                os.remove(dir_path / i)
+                with zipfile.ZipFile(attachmentsFolder / i, 'r') as zip_ref:
+                    zip_ref.extractall(attachmentsFolder)
+                os.remove(attachmentsFolder / i)
 
-        # Finds .csv in list of attachments
-        for i in os.listdir(dir_path):
+        # Finds .csv in list of attachments from email
+        for i in os.listdir(attachmentsFolder):
             if '.csv' in i:
-                Data.csvPath = dir_path / i
+                Data.csvPath = attachmentsFolder / i
 
         # Validates .csv was found
         if '.csv' in str(Data.csvPath):
