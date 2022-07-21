@@ -101,7 +101,7 @@ def sendSuccessEmail(lines: str, df: pd.DataFrame):
 # @Return DataFrame: Dataframe containing the information from Default_TEST CSV
 # @Description: Retrieves Default_TEST file from Outlook email
 def getFileFromEmail() -> pd.DataFrame:
-    # Creating proper directory structure TODO: Consolidate all the references to dir_path in Data class
+    # Creating proper directory structure
     if not os.path.exists(Data.dir_path):
         os.makedirs(Data.dir_path)
     if not os.path.exists(Data.dir_path / 'DownloadedEmailAttachments'):
@@ -191,11 +191,12 @@ def getFileFromEmail() -> pd.DataFrame:
             df['End'] = end
             df = df.sort_values(by=['Unnamed: 19', 'End'], ignore_index=True)
 
-            # TODO: Delete mail item when done (MailItem.Delete)
-
+            # Remove email from inbox
+            item.Delete()
             return df
         else:
-            # TODO: Delete mail item when done (MailItem.Delete)
+            # Remove email from inbox
+            item.Delete()
             raise Exception('No .csv found!')
 
 
