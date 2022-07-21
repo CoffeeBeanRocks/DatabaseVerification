@@ -1,0 +1,9 @@
+In order to convert this project structure to an exe you need to use Pyinstaller.
+Make sure all imports are included within Python by running main.py from terminal.
+If you cannot run the main.py from terminal because an import was not found go to
+Settings -> Project Settings -> Python Interpreter and manually add the import there.
+After confirming that the project will run, go to the local terminal or main root of the file
+(C:\Users\emeyers\PycharmProjects\DefaultTestAutoScript) in terminal and run the following command:
+pyinstaller main.py --onefile --name="Default_TEST"
+--onefile is a must as it compresses all files into a single .exe
+
