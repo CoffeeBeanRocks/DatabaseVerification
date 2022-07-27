@@ -7,3 +7,4 @@ After confirming that the project will run, go to the local terminal or main roo
 pyinstaller main.py --onefile --name="Default_TEST"
 --onefile is a must as it compresses all files into a single .exe
 
+puts it into the folder called dist (in project folder)
