@@ -176,11 +176,13 @@ def getFileFromEmail() -> pd.DataFrame:
             df.drop('Live', axis=1, inplace=True)
             df.drop('Revenue', axis=1, inplace=True)
 
-            # Sorting data by Order #
+            # Remove all none values
             df.replace({pd.NaT: None}, inplace=True)
             df = df.fillna('')
-            end = []
             df['Unnamed: 19'] = np.NAN
+            
+            # Sorting data by Order #
+            end = []
             for i in range(0, len(df.index)):
                 string = df['Order #'][i]
                 zero = string.index('0')
