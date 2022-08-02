@@ -225,13 +225,16 @@ def updateAccess(filePath):
     df = getFileFromEmail()
 
     # Finds the last record in the dataframe that's also in Access
+    lastUpdate = 0
     maxItem = 0
-    for i in reversed(range(0, len(df.index))):
+    for i in range(0, len(df.index)):  # TODO: Make more efficient
+        if int((i / len(df.index)) * 100) != lastUpdate:
+            lastUpdate = int((i / len(df.index)) * 100)
+            print("{}%".format(lastUpdate))
         find = "SELECT * FROM [{}] WHERE [{}] = '{}'".format(Data.tableName, 'Order #', df.iloc[i]['Order #'])
         cursor.execute(find)
         if cursor.fetchone() is not None:
             maxItem = max(maxItem, int(df.iloc[i]['Unnamed: 19']))
-            break
 
     # Limits the dataframe to only the new records that will be placed in access
     df2 = df[df['Unnamed: 19'] > maxItem]
